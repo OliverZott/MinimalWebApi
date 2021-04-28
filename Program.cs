@@ -1,26 +1,43 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+
+using System.IO;
+using System.Net.Mime;
+
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace WebAPI
-{
-    public class Program
-    {
-        public static void Main(string[] args)
+///
+/// Example Porject for minimal Web-API
+/// 
+/// https://korzh.com/blog/single-file-web-service-aspnetcore
+/// https://trello.com/c/fk13jez3/47-single-file-web-api-services
+/// 
+/// to run and check api: 
+///     "dotnet run"
+///     "http://localhost:5000/api/echo"
+/// 
+Host.CreateDefaultBuilder(args)
+    .ConfigureWebHostDefaults(webBuilder => webBuilder
+        .Configure(app => app.Run(async context =>
         {
-            CreateHostBuilder(args).Build().Run();
-        }
+            if (context.Request.Path == "/api/echo" && context.Request.Method == "POST")
+            {
+                // getting contentn of POST request
+                using var reader = new StreamReader(context.Request.Body);      // 'using' to create alias for type "using alias directive"
+                var content = await reader.ReadToEndAsync();
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<Startup>();
-                });
-    }
-}
+                // sending it back in the response
+                context.Response.ContentType = MediaTypeNames.Text.Plain;
+                await context.Response.WriteAsync(content);
+            }
+            else
+            {
+                // Return 404 or any endpoint
+                context.Response.StatusCode = StatusCodes.Status404NotFound;
+                await context.Response.WriteAsync($"WRONG ENDPOINT: {context.Request.Path.ToString()}. Use POST request to /api/echo instead");
+            }
+        }))
+    )
+    .Build().Run();
